@@ -1,16 +1,56 @@
-# React + Vite
+# TechBytes 📝
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A full-stack AI-powered blogging platform where users can read, write, and share blogs across multiple categories.
 
-Currently, two official plugins are available:
+## 🔗 Live Demo
+[https://sarvesh0415.github.io/techbytes/](https://sarvesh0415.github.io/techbytes/)
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## ✨ Features
 
-## React Compiler
+- 🔐 User Authentication (Sign up, Sign in, Sign out)
+- 📝 Write and publish blogs with rich text
+- 🗂️ Category based filtering (Technology, Travel, Lifestyle, Education, Food, Opinions, Entertainment)
+- ❤️ Like system on blogs
+- 👥 Follow / Unfollow other users
+- 📰 Personalized feed
+- 🔍 Search blogs by title
+- 🤖 AI Caption / Tagline suggestions
+- 🎨 AI Image generation for blog cover
+- 🎙️ Voice typing support while writing
+- 📈 Trending tags section
+- 🌙 Dark mode UI
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## 🛠️ Tech Stack
 
-## Expanding the ESLint configuration
+- **Frontend** — React.js, Vite, CSS
+- **Backend / Database** — Supabase (PostgreSQL)
+- **Authentication** — Supabase Auth
+- **AI Features** — AI caption suggestions, AI image generation
+- **Deployment** — GitHub Pages
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## 📸 Screenshots
+
+> Feed Page
+![Feed](./public/screenshots/feed.png)
+
+> Write Page
+![Write](./public/screenshots/write.png)
+
+## 🚀 Getting Started
+
+```bash
+# Clone the repo
+git clone https://github.com/sarvesh0415/techbytes.git
+
+# Install dependencies
+cd techbytes
+npm install
+
+# Start development server
+npm run dev
+```
+
+## 👤 Author
+
+**Sarvesh**
+- GitHub: [@sarvesh0415](https://github.com/sarvesh0415)
