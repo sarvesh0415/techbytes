@@ -172,7 +172,7 @@ export const bodyHTML = `
           <button class="btn btn-ghost" onclick="resetForm()">✕ Clear</button>
           <button class="btn btn-gold" onclick="showPreview()" style="flex:1;">👁 Preview</button>
           <button class="btn-publish" id="bottomPublishBtn" onclick="publishPost()" style="display:flex;">
-            <span id="pubSpinB" style="display:none;width:13px;height:13px;border:2px solid rgba(0,0,0,.3);border-top-color:#000;border-radius:50%;animation:spin .7s linear infinite;"></span>🚀 Publish
+            <span id="pubSpinB" style="display:none;width:13px;height:13px;border:2px solid rgba(0,0,0,.3);border-top-color:#000;border-radius:50%;animation:spin .7s linear infinite;"></span>Publish
           </button>
         </div>
         <div class="publish-status" id="publishStatus"></div>
