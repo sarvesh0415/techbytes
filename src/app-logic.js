@@ -690,7 +690,7 @@ async function loadSidebar() {
           </div>
           <button class="btn-follow ${isFollowing ? 'following' : ''}"
             onclick="toggleFollow('${s.user_id}',this)">
-            ${isFollowing ? '✓ Following' : 'Follow'}
+            ${isFollowing ? 'Following' : 'Follow'}
           </button>`;
         fl.appendChild(div);
       });
@@ -766,7 +766,7 @@ async function toggleFollow(userId, btn) {
     btn.classList.remove('following');
   } else {
     followingSet.add(userId);
-    btn.textContent = '✓ Following';
+    btn.textContent = 'Following';
     btn.classList.add('following');
   }
 
@@ -793,7 +793,7 @@ async function toggleFollow(userId, btn) {
     // Revert on failure
     if (wasFollowing) {
       followingSet.add(userId);
-      btn.textContent = '✓ Following';
+      btn.textContent = 'Following';
       btn.classList.add('following');
     } else {
       followingSet.delete(userId);
