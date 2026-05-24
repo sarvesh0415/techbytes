@@ -1052,19 +1052,38 @@ function handleImageUpload(event) {
   if (!file) return;
 
   const reader = new FileReader();
-  reader.onload = (e) => {
-    uploadedImageData = e.target.result;
-    const img = document.getElementById('uploadedImg');
-    img.src = uploadedImageData;
-    img.style.display = 'block';
-    document.getElementById('imagePlaceholder').style.display = 'none';
-    document.getElementById('imageZone').classList.add('has-image');
-    document.getElementById('imageActions').style.display = 'flex';
-    useAIImage = false;
-    document.getElementById('aiImgToggle').classList.add('active');
-    document.getElementById('genImageArea').style.display = 'none';
-    showToast('', 'Image uploaded!');
-  };
+  reader.onload = async (e) => {
+  uploadedImageData = e.target.result;
+  const img = document.getElementById('uploadedImg');
+  img.src = uploadedImageData;
+  img.style.display = 'block';
+  document.getElementById('imagePlaceholder').style.display = 'none';
+  document.getElementById('imageZone').classList.add('has-image');
+  document.getElementById('imageActions').style.display = 'flex';
+  useAIImage = false;
+  document.getElementById('aiImgToggle').classList.add('active');
+  document.getElementById('genImageArea').style.display = 'none';
+
+  // Upload to Supabase Storage
+  try {
+    const blob = await fetch(e.target.result).then(r => r.blob());
+    const fileName = `upload-${Date.now()}-${Math.random().toString(36).slice(2)}.jpg`;
+    const { data, error } = await _supabase.storage
+      .from('post-images')
+      .upload(fileName, blob, { contentType: file.type });
+    if (!error) {
+      const { data: urlData } = _supabase.storage
+        .from('post-images')
+        .getPublicUrl(fileName);
+      uploadedImageData = urlData.publicUrl;
+      img.src = uploadedImageData;
+    }
+  } catch (e) {
+    console.warn('Could not upload to storage:', e);
+  }
+
+  showToast('', 'Image uploaded!');
+};
   reader.readAsDataURL(file);
 }
 
@@ -1271,6 +1290,23 @@ async function generateAIImage() {
   }
 
   aiImageUrl = imgUrl;
+  // Upload image to Supabase Storage for permanent storage
+try {
+  const response = await fetch(imgUrl);
+  const blob = await response.blob();
+  const fileName = `ai-${Date.now()}-${Math.random().toString(36).slice(2)}.jpg`;
+  const { data, error } = await _supabase.storage
+    .from('post-images')
+    .upload(fileName, blob, { contentType: 'image/jpeg' });
+  if (!error) {
+    const { data: urlData } = _supabase.storage
+      .from('post-images')
+      .getPublicUrl(fileName);
+    aiImageUrl = urlData.publicUrl;
+  }
+} catch (e) {
+  console.warn('Could not upload to storage, using direct URL:', e);
+}
   const imgEl = document.getElementById('aiGenImg');
   imgEl.style.opacity = '0';
   imgEl.style.transition = 'opacity .4s ease';
