@@ -14,7 +14,8 @@ export const bodyHTML = `
     <button class="login-btn" id="authBtn" onclick="handleAuth()"><span class="login-spinner" id="loginSpinner"></span><span id="authBtnText">Sign In</span></button>
     <div class="login-error" id="loginError"></div>
     <div class="login-success" id="loginSuccess"></div>
-    <p class="login-divider" id="authFooter">Credentials verified against Supabase Auth</p>
+    <p class="login-divider" id="authFooter">Your account is saved to Supabase Auth</p>
+    <button class="btn-guest" id="guestBtn" onclick="enterAsGuest()">Continue without account →</button>
   </div>
 </div>
 
