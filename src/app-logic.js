@@ -232,7 +232,7 @@ async function triggerAutoSave() {
       caption: document.getElementById('captionInput').value.trim(),
       category: document.querySelector('.cat-chip.active')?.textContent || null,
       slug: generateSlug(title),
-      image_url: (useAIImage && aiImageUrl) ? aiImageUrl : null,
+      image_url: (useAIImage && aiImageUrl) ? aiImageUrl : (uploadedImageData || null),
       is_draft: true,
       claps: 0,
       author_email: currentUser.email
@@ -1017,7 +1017,7 @@ async function publishPost() {
     return;
   }
 
-  const imageUrl = (useAIImage && aiImageUrl) ? aiImageUrl : null;
+  const imageUrl = (useAIImage && aiImageUrl) ? aiImageUrl : (uploadedImageData || null);
   setPublishLoading(true);
 
   try {
