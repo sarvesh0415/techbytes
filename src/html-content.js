@@ -14,8 +14,8 @@ export const bodyHTML = `
     <button class="login-btn" id="authBtn" onclick="handleAuth()"><span class="login-spinner" id="loginSpinner"></span><span id="authBtnText">Sign In</span></button>
     <div class="login-error" id="loginError"></div>
     <div class="login-success" id="loginSuccess"></div>
-    <p class="login-divider" id="authFooter">Your account is saved to Supabase Auth</p>
-    <button class="btn-guest" id="guestBtn" onclick="enterAsGuest()">Continue without account →</button>
+    <p class="login-divider" id="authFooter">Credentials verified against Supabase Auth</p>
+    <button class="guest-btn" onclick="continueWithoutAccount()">Continue without account →</button>
   </div>
 </div>
 
@@ -236,5 +236,5 @@ export const bodyHTML = `
   </div>
 </main>
 
-<div class="toast" id="toast"><span class="toast-icon" id="toastIcon">✓</span><span id="toastMsg">Done!</span></div>
+<div class="toast" id="toast"><span class="toast-icon" id="toastIcon">✓</span><span id="toastMsg">Done!</span><button class="toast-signin-btn" id="toastSignInBtn" style="display:none;" onclick="showLoginFromToast()">Sign In</button></div>
 `;

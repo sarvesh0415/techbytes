@@ -5,7 +5,7 @@ let currentUser = null,
     currentAuthMode = 'signin',
     currentView = 'feed',
     prevView = 'feed',
-    isGuest = false;
+    guestMode = false;
 
 let uploadedImageData = null,
     aiImageUrl = null,
@@ -151,11 +151,6 @@ function switchView(view) {
     document.getElementById('navWrite').classList.add('active');
     document.getElementById('headerPublishBtn').classList.add('show');
   } else if (view === 'myblogs') {
-    if (isGuest) {
-      showToast('🔒', 'Sign in to manage your own blogs!');
-      switchView('feed');
-      return;
-    }
     document.getElementById('myblogsView').style.display = 'block';
     document.getElementById('navMyBlogs').classList.add('active');
     loadMyBlogs();
@@ -454,8 +449,8 @@ function buildCard(post, mode) {
 
 // ═══ QUICK LIKE (on card) ═════════════════════════════════════
 async function quickLike(postId, btn) {
-  if (isGuest || !currentUser) {
-    showToast('🔒', 'Sign in to like posts — it only takes a second!');
+  if (guestMode || !currentUser) {
+    showGuestToast();
     return;
   }
   burstEffect(btn, '❤️');
@@ -589,11 +584,11 @@ function openRead(post) {
 }
 
 async function handleReadLike() {
-  if (!currentReadPost) return;
-  if (isGuest || !currentUser) {
-    showToast('🔒', 'Sign in to like posts — it only takes a second!');
+  if (guestMode || !currentUser) {
+    showGuestToast();
     return;
   }
+  if (!currentReadPost) return;
   const btn = document.getElementById('bigLikeBtn');
   burstEffect(btn, '❤️');
 
@@ -834,7 +829,7 @@ function switchTab(mode) {
     : 'Sign in to continue writing your story.';
   document.getElementById('authFooter').textContent = isSignUp
     ? 'Your account is saved to Supabase Auth'
-    : 'Your account is saved to Supabase Auth';
+    : 'Credentials verified against Supabase Auth';
 
   hideAuthMessages();
   document.getElementById('loginConfirm').value = '';
@@ -941,26 +936,47 @@ async function handleSignUp() {
 async function handleSignOut() {
   await _supabase.auth.signOut();
   currentUser = null;
-  isGuest = false;
   showLogin();
   showToast('👋', 'Signed out.');
 }
 
-function enterAsGuest() {
-  isGuest = true;
+function continueWithoutAccount() {
+  guestMode = true;
   currentUser = null;
   document.getElementById('loginOverlay').classList.add('hidden');
   document.getElementById('userPill').style.display = 'none';
   document.getElementById('signoutBtn').style.display = 'none';
   document.getElementById('navTabs').classList.add('show');
   document.getElementById('postsBadge').classList.remove('show');
+  document.getElementById('headerPublishBtn').classList.remove('show');
   switchView('feed');
-  showToast('👋', 'Browsing as guest — sign in to like & publish!');
+}
+
+function showGuestToast() {
+  const toast = document.getElementById('toast');
+  document.getElementById('toastIcon').textContent = '🔒';
+  document.getElementById('toastMsg').textContent = 'Sign in to do this!';
+  const signinBtn = document.getElementById('toastSignInBtn');
+  signinBtn.style.display = 'inline-flex';
+  toast.classList.add('show');
+  clearTimeout(toast._guestTimer);
+  toast._guestTimer = setTimeout(() => {
+    toast.classList.remove('show');
+    setTimeout(() => { signinBtn.style.display = 'none'; }, 400);
+  }, 4000);
+}
+
+function showLoginFromToast() {
+  const toast = document.getElementById('toast');
+  toast.classList.remove('show');
+  document.getElementById('toastSignInBtn').style.display = 'none';
+  guestMode = false;
+  showLogin();
 }
 
 function showApp(user) {
+  guestMode = false;
   currentUser = user;
-  isGuest = false;
   document.getElementById('loginOverlay').classList.add('hidden');
   document.getElementById('userEmailLabel').textContent = displayName(user?.email || '');
   document.getElementById('userPill').style.display = 'flex';
@@ -971,7 +987,6 @@ function showApp(user) {
 }
 
 function showLogin() {
-  isGuest = false;
   document.getElementById('loginOverlay').classList.remove('hidden');
   document.getElementById('userPill').style.display = 'none';
   document.getElementById('signoutBtn').style.display = 'none';
@@ -983,9 +998,8 @@ function showLogin() {
 
 // ═══ PUBLISH ══════════════════════════════════════════════════
 async function publishPost() {
-  if (isGuest || !currentUser) {
-    showPublishStatus('error', '🔒 Create a free account to publish your blog and share it with the world!');
-    showToast('🔒', 'Sign in to publish your blog!');
+  if (guestMode || !currentUser) {
+    showGuestToast();
     return;
   }
 
@@ -1601,11 +1615,12 @@ export function initApp() {
     setFilter, filterPosts, loadMyBlogs, buildCard, quickLike, burstEffect,
     deletePost, openRead, handleReadLike, loadSidebar, loadFollows, toggleFollow,
     switchTab, handleAuth, showAuthError, showAuthSuccess, hideAuthMessages,
-    setAuthLoading, handleLogin, handleSignUp, handleSignOut, enterAsGuest, showApp, showLogin,
+    setAuthLoading, handleLogin, handleSignUp, handleSignOut, showApp, showLogin,
     publishPost, setPublishLoading, showPublishStatus, loadPostsCount, toggleCat,
     handleImageUpload, removeImage, toggleAIImage, generateLocalCaptions,
     suggestCaptions, renderCaptions, getCategoryFallback, extractTitleKeywords,
     hashString, generateAIImage, showPreview, resetForm, showToast,
-    initVoiceTyping, toggleVoice, startVoice, stopVoice
+    initVoiceTyping, toggleVoice, startVoice, stopVoice,
+    continueWithoutAccount, showGuestToast, showLoginFromToast
   });
 }
