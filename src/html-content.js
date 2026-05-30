@@ -71,16 +71,33 @@ export const bodyHTML = `
             <div class="profile-avatar" id="profileAvatarEl">😊</div>
             <div class="profile-avatar-edit"></div>
           </div>
-          <div class="profile-name" id="profileName">Writer</div>
+          <div class="profile-name-row">
+            <div class="profile-name" id="profileName">Writer</div>
+            <button class="edit-username-btn" id="editUsernameBtn" onclick="startEditUsername()" title="Edit username">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
+            </button>
+          </div>
+          <div class="edit-username-inline" id="editUsernameInline" style="display:none;">
+            <input type="text" id="usernameInput" placeholder="Choose a username…" maxlength="30" onkeydown="if(event.key==='Enter')saveUsername()">
+            <div class="edit-username-actions">
+              <button class="edit-username-save" onclick="saveUsername()">Save</button>
+              <button class="edit-username-cancel" onclick="cancelEditUsername()">Cancel</button>
+            </div>
+          </div>
           <div class="profile-email" id="profileEmailSidebar"></div>
-          <div class="profile-stats">
+          <div class="profile-stats four-col">
             <div class="stat-box"><div class="stat-num" id="statPosts">0</div><div class="stat-label">Posts</div></div>
             <div class="stat-box"><div class="stat-num" id="statLikes">0</div><div class="stat-label">Likes</div></div>
-            <div class="stat-box"><div class="stat-num" id="statFollowers">0</div><div class="stat-label">following</div></div>
+            <div class="stat-box"><div class="stat-num" id="statFollowersCount">0</div><div class="stat-label">Followers</div></div>
+            <div class="stat-box"><div class="stat-num" id="statFollowingCount">0</div><div class="stat-label">Following</div></div>
           </div>
         </div>
+        <div class="sidebar-card" id="followingCard" style="display:none;">
+          <div class="sidebar-title">People You Follow</div>
+          <div class="follow-list" id="followingUsersList"><div style="font-size:.82rem;color:var(--muted);">Loading…</div></div>
+        </div>
         <div class="sidebar-card">
-          <div class="sidebar-title">Who to Follow</div>
+          <div class="sidebar-title">Discover Writers</div>
           <div class="follow-list" id="followList"><div style="font-size:.82rem;color:var(--muted);">Loading suggestions…</div></div>
         </div>
         <div class="sidebar-card">

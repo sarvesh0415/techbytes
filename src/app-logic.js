@@ -22,6 +22,7 @@ let followingSet = new Set(),
 
 let userAvatarUrl = null; // base64 avatar stored in localStorage
 let regenCounter = 0;     // increments on "New Image" click for different results
+let usernameCache = {};   // userId → custom username mapping
 
 const PEXELS_API_KEY = 'XrMHBVNp8PKxNVaUJUzWusdj73xlbsQj56aYFkRCXInnTWdF2bqJ5H3j';
 
@@ -113,6 +114,72 @@ function loadUserAvatar() {
   userAvatarUrl = localStorage.getItem('tb_avatar_' + currentUser.id) || null;
   updateAllAvatarDisplays();
 }
+
+
+// ═══ USERNAME (profiles table) ════════════════════════════════
+async function loadUsername() {
+  if (!currentUser) return;
+  try {
+    const { data } = await _supabase
+      .from('profiles')
+      .select('username')
+      .eq('id', currentUser.id)
+      .maybeSingle();
+    if (data?.username) usernameCache[currentUser.id] = data.username;
+  } catch (e) { console.warn('Could not load username:', e); }
+}
+
+async function loadUsernames(userIds) {
+  const ids = (userIds || []).filter(id => id && !usernameCache[id]);
+  if (!ids.length) return;
+  try {
+    const { data } = await _supabase.from('profiles').select('id, username').in('id', ids);
+    (data || []).forEach(p => { if (p.username) usernameCache[p.id] = p.username; });
+  } catch (e) {}
+}
+
+function getDisplayName(userId, email) {
+  if (userId && usernameCache[userId]) return usernameCache[userId];
+  return displayName(email);
+}
+
+function startEditUsername() {
+  if (!currentUser) return;
+  const input = document.getElementById('usernameInput');
+  input.value = usernameCache[currentUser.id] || '';
+  document.getElementById('profileName').style.display = 'none';
+  document.getElementById('editUsernameBtn').style.display = 'none';
+  document.getElementById('editUsernameInline').style.display = 'block';
+  input.focus();
+}
+
+async function saveUsername() {
+  const username = document.getElementById('usernameInput').value.trim();
+  if (!username || username.length < 2) {
+    showToast('⚠️', 'Username must be at least 2 characters.');
+    return;
+  }
+  try {
+    const { error } = await _supabase
+      .from('profiles')
+      .upsert({ id: currentUser.id, username }, { onConflict: 'id' });
+    if (error) throw error;
+    usernameCache[currentUser.id] = username;
+    document.getElementById('profileName').textContent = username;
+    document.getElementById('userEmailLabel').textContent = username;
+    cancelEditUsername();
+    showToast('✓', 'Username saved — visible to everyone!');
+  } catch (e) {
+    showToast('⚠️', 'Could not save: ' + e.message);
+  }
+}
+
+function cancelEditUsername() {
+  document.getElementById('profileName').style.display = '';
+  document.getElementById('editUsernameBtn').style.display = '';
+  document.getElementById('editUsernameInline').style.display = 'none';
+}
+
 
 function getAvatarImgTag(userId, email, size) {
   const savedAvatar = localStorage.getItem('tb_avatar_' + userId);
@@ -324,7 +391,14 @@ function renderFeedGrid() {
     return;
   }
 
-  posts.forEach(post => grid.appendChild(buildCard(post, 'feed')));
+  // Sort: followed users first, then by likes (most → least) within each group
+  const followedPosts = posts.filter(p => followingSet.has(p.user_id));
+  const otherPosts = posts.filter(p => !followingSet.has(p.user_id));
+  followedPosts.sort((a, b) => (b.claps || 0) - (a.claps || 0));
+  otherPosts.sort((a, b) => (b.claps || 0) - (a.claps || 0));
+  const sorted = [...followedPosts, ...otherPosts];
+
+  sorted.forEach(post => grid.appendChild(buildCard(post, 'feed')));
 }
 
 function setFilter(cat, el) {
@@ -405,7 +479,7 @@ function buildCard(post, mode) {
     month: 'short', day: 'numeric', year: 'numeric'
   });
   const rt = calcReadTime(post.body);
-  const authorName = displayName(post.author_email || currentUser?.email || '');
+  const authorName = getDisplayName(post.user_id, post.author_email || currentUser?.email || '');
   const color = avatarColor(post.user_id || '');
   const avatarHtml = getAvatarImgTag(post.user_id, post.author_email, 22);
   const isLiked = likedPosts.has(post.id);
@@ -556,7 +630,7 @@ function openRead(post) {
     avatarEl.textContent = getInitial(post.author_email || '?');
   }
 
-  document.getElementById('readAuthorName').textContent = displayName(post.author_email || '');
+  document.getElementById('readAuthorName').textContent = getDisplayName(post.user_id, post.author_email || '');
   document.getElementById('readAuthorMeta').textContent =
     new Date(post.created_at).toLocaleDateString('en-US', {
       year: 'numeric', month: 'long', day: 'numeric'
@@ -626,12 +700,25 @@ async function loadSidebar() {
 
   // Profile card
   document.getElementById('profileCard').style.display = 'block';
-  const name = displayName(currentUser.email || '');
+  await loadUsername();
+  const name = getDisplayName(currentUser.id, currentUser.email);
   document.getElementById('profileName').textContent = name;
+  document.getElementById('userEmailLabel').textContent = name;
   document.getElementById('profileEmailSidebar').textContent = currentUser.email || '';
   loadUserAvatar();
   await loadFollows();
-  document.getElementById('statFollowers').textContent = followingSet.size;
+
+  // Followers count (people who follow ME)
+  let followersCount = 0;
+  try {
+    const { count } = await _supabase
+      .from('follows')
+      .select('id', { count: 'exact', head: true })
+      .eq('following_id', currentUser.id);
+    followersCount = count || 0;
+  } catch (e) {}
+  document.getElementById('statFollowersCount').textContent = followersCount;
+  document.getElementById('statFollowingCount').textContent = followingSet.size;
 
   try {
     const { count: pc } = await _supabase
@@ -639,7 +726,6 @@ async function loadSidebar() {
       .select('id', { count: 'exact', head: true })
       .eq('user_id', currentUser.id)
       .eq('is_draft', false);
-
     document.getElementById('statPosts').textContent = pc || 0;
 
     const { data: cd } = await _supabase
@@ -647,7 +733,6 @@ async function loadSidebar() {
       .select('claps')
       .eq('user_id', currentUser.id)
       .eq('is_draft', false);
-
     document.getElementById('statLikes').textContent =
       (cd || []).reduce((s, p) => s + (p.claps || 0), 0);
   } catch (e) {}
@@ -663,83 +748,125 @@ async function loadSidebar() {
 
     const seen = new Set();
     const suggestions = [];
-
     (otherPosts || []).forEach(p => {
-      if (p.user_id && !seen.has(p.user_id) && suggestions.length < 5) {
+      if (p.user_id && !seen.has(p.user_id) && suggestions.length < 7) {
         seen.add(p.user_id);
         suggestions.push(p);
       }
     });
 
+    // Preload usernames for suggestions
+    await loadUsernames(suggestions.map(s => s.user_id));
+
     const fl = document.getElementById('followList');
     fl.innerHTML = '';
-
     if (!suggestions.length) {
       fl.innerHTML = `<div style="font-size:.82rem;color:var(--muted);">No other writers yet.<br>Be the first to invite someone!</div>`;
     } else {
       suggestions.forEach(s => {
         const color = avatarColor(s.user_id || '');
         const email = s.author_email || 'writer@techbytes.com';
-        const name = displayName(email);
+        const uname = getDisplayName(s.user_id, email);
         const isFollowing = followingSet.has(s.user_id);
         const savedAv = localStorage.getItem('tb_avatar_' + s.user_id);
-
         const div = document.createElement('div');
         div.className = 'follow-item';
         div.innerHTML = `
           <div class="follow-avatar" style="background:${color}">
-            ${savedAv
-              ? `<img src="${savedAv}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`
-              : `<span>${getInitial(email)}</span>`
-            }
+            ${savedAv ? `<img src="${savedAv}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">` : `<span>${getInitial(email)}</span>`}
           </div>
           <div class="follow-info">
-            <div class="follow-name">${name}</div>
+            <div class="follow-name">${uname}</div>
             <div class="follow-cat">${s.category || 'Blogger'}</div>
           </div>
-          <button class="btn-follow ${isFollowing ? 'following' : ''}"
-            onclick="toggleFollow('${s.user_id}',this)">
+          <button class="btn-follow ${isFollowing ? 'following' : ''}" onclick="toggleFollow('${s.user_id}',this)">
             ${isFollowing ? 'Following' : 'Follow'}
           </button>`;
         fl.appendChild(div);
       });
+    }
+
+    // "People You Follow" section
+    const followingCard = document.getElementById('followingCard');
+    const followingList = document.getElementById('followingUsersList');
+    if (followingSet.size > 0) {
+      followingCard.style.display = 'block';
+      const followedUsers = suggestions.filter(s => followingSet.has(s.user_id));
+      // Also find followed users not in suggestions
+      const suggestionIds = new Set(suggestions.map(s => s.user_id));
+      const missingIds = [...followingSet].filter(id => !suggestionIds.has(id));
+      let extraFollowed = [];
+      if (missingIds.length) {
+        try {
+          const { data: ep } = await _supabase
+            .from('posts')
+            .select('user_id,category,author_email')
+            .eq('is_draft', false)
+            .in('user_id', missingIds)
+            .limit(20);
+          const extraSeen = new Set();
+          (ep || []).forEach(p => {
+            if (!extraSeen.has(p.user_id)) { extraSeen.add(p.user_id); extraFollowed.push(p); }
+          });
+          await loadUsernames(extraFollowed.map(e => e.user_id));
+        } catch (e) {}
+      }
+      const allFollowed = [...followedUsers, ...extraFollowed];
+      followingList.innerHTML = '';
+      if (!allFollowed.length) {
+        followingList.innerHTML = `<div style="font-size:.82rem;color:var(--muted);">Following ${followingSet.size} writer${followingSet.size !== 1 ? 's' : ''}.</div>`;
+      } else {
+        allFollowed.forEach(s => {
+          const color = avatarColor(s.user_id || '');
+          const email = s.author_email || 'writer@techbytes.com';
+          const uname = getDisplayName(s.user_id, email);
+          const savedAv = localStorage.getItem('tb_avatar_' + s.user_id);
+          const div = document.createElement('div');
+          div.className = 'follow-item';
+          div.innerHTML = `
+            <div class="follow-avatar" style="background:${color}">
+              ${savedAv ? `<img src="${savedAv}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">` : `<span>${getInitial(email)}</span>`}
+            </div>
+            <div class="follow-info">
+              <div class="follow-name">${uname}</div>
+              <div class="follow-cat">${s.category || 'Blogger'}</div>
+            </div>
+            <button class="btn-follow following" onclick="toggleFollow('${s.user_id}',this)">Following</button>`;
+          followingList.appendChild(div);
+        });
+      }
+    } else {
+      followingCard.style.display = 'none';
     }
   } catch (e) {
     document.getElementById('followList').innerHTML =
       `<div style="font-size:.82rem;color:var(--muted);">Could not load suggestions.</div>`;
   }
 
-  // Trending tags based on categories
+  // Preload usernames for feed posts
+  const feedUserIds = allFeedPosts.map(p => p.user_id).filter(Boolean);
+  await loadUsernames([...new Set(feedUserIds)]);
+
+  // Trending tags
   try {
     const { data: catPosts } = await _supabase
       .from('posts')
       .select('category')
       .eq('is_draft', false)
       .limit(100);
-
     const catCount = {};
     (catPosts || []).forEach(p => {
       if (p.category) catCount[p.category] = (catCount[p.category] || 0) + 1;
     });
-
-    const sorted = Object.entries(catCount)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 6);
-
+    const sorted = Object.entries(catCount).sort((a, b) => b[1] - a[1]).slice(0, 6);
     const tl = document.getElementById('trendingList');
     tl.innerHTML = '';
-
     if (!sorted.length) {
       tl.innerHTML = `<div style="font-size:.82rem;color:var(--muted);">No categories yet.</div>`;
       return;
     }
-
     sorted.forEach(([cat, count]) => {
-      tl.innerHTML += `
-        <div class="trending-item">
-          <span class="trending-tag">#${cat}</span>
-          <span class="trending-count">${count} post${count !== 1 ? 's' : ''}</span>
-        </div>`;
+      tl.innerHTML += `<div class="trending-item"><span class="trending-tag">#${cat}</span><span class="trending-count">${count} post${count !== 1 ? 's' : ''}</span></div>`;
     });
   } catch (e) {}
 }
@@ -1609,7 +1736,7 @@ export function initApp() {
   // Expose all functions to window so HTML onclick handlers can call them
   Object.assign(window, {
     toggleTheme, generateSlug, onTitleChange, calcReadTime, getInitial,
-    avatarColor, displayName, handleAvatarUpload, updateAllAvatarDisplays,
+    avatarColor, displayName, getDisplayName, handleAvatarUpload, updateAllAvatarDisplays,
     loadUserAvatar, getAvatarImgTag, switchView, readGoBack, countWords,
     updateWordGoal, scheduleAutoSave, triggerAutoSave, loadFeed, renderFeedGrid,
     setFilter, filterPosts, loadMyBlogs, buildCard, quickLike, burstEffect,
@@ -1621,6 +1748,8 @@ export function initApp() {
     suggestCaptions, renderCaptions, getCategoryFallback, extractTitleKeywords,
     hashString, generateAIImage, showPreview, resetForm, showToast,
     initVoiceTyping, toggleVoice, startVoice, stopVoice,
-    continueWithoutAccount, showGuestToast, showLoginFromToast
+    continueWithoutAccount, showGuestToast, showLoginFromToast,
+    startEditUsername, saveUsername, cancelEditUsername,
+    loadUsername, loadUsernames
   });
 }
