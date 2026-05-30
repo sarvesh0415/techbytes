@@ -737,111 +737,10 @@ async function loadSidebar() {
       (cd || []).reduce((s, p) => s + (p.claps || 0), 0);
   } catch (e) {}
 
-  // Who to follow — fetch OTHER users posts
-  try {
-    const { data: otherPosts } = await _supabase
-      .from('posts')
-      .select('user_id,category,author_email')
-      .eq('is_draft', false)
-      .neq('user_id', currentUser.id)
-      .limit(50);
+  // Who to follow — no longer preloaded, handled by search
+  const fl = document.getElementById('followList');
+  fl.innerHTML = `<div style="font-size:.82rem;color:var(--muted);">Use the search icon to find writers.</div>`;
 
-    const seen = new Set();
-    const suggestions = [];
-    (otherPosts || []).forEach(p => {
-      if (p.user_id && !seen.has(p.user_id) && suggestions.length < 7) {
-        seen.add(p.user_id);
-        suggestions.push(p);
-      }
-    });
-
-    // Preload usernames for suggestions
-    await loadUsernames(suggestions.map(s => s.user_id));
-
-    const fl = document.getElementById('followList');
-    fl.innerHTML = '';
-    if (!suggestions.length) {
-      fl.innerHTML = `<div style="font-size:.82rem;color:var(--muted);">No other writers yet.<br>Be the first to invite someone!</div>`;
-    } else {
-      suggestions.forEach(s => {
-        const color = avatarColor(s.user_id || '');
-        const email = s.author_email || 'writer@techbytes.com';
-        const uname = getDisplayName(s.user_id, email);
-        const isFollowing = followingSet.has(s.user_id);
-        const savedAv = localStorage.getItem('tb_avatar_' + s.user_id);
-        const div = document.createElement('div');
-        div.className = 'follow-item';
-        div.innerHTML = `
-          <div class="follow-avatar" style="background:${color}">
-            ${savedAv ? `<img src="${savedAv}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">` : `<span>${getInitial(email)}</span>`}
-          </div>
-          <div class="follow-info">
-            <div class="follow-name">${uname}</div>
-            <div class="follow-cat">${s.category || 'Blogger'}</div>
-          </div>
-          <button class="btn-follow ${isFollowing ? 'following' : ''}" onclick="toggleFollow('${s.user_id}',this)">
-            ${isFollowing ? 'Following' : 'Follow'}
-          </button>`;
-        fl.appendChild(div);
-      });
-    }
-
-    // "People You Follow" section
-    const followingCard = document.getElementById('followingCard');
-    const followingList = document.getElementById('followingUsersList');
-    if (followingSet.size > 0) {
-      followingCard.style.display = 'block';
-      const followedUsers = suggestions.filter(s => followingSet.has(s.user_id));
-      // Also find followed users not in suggestions
-      const suggestionIds = new Set(suggestions.map(s => s.user_id));
-      const missingIds = [...followingSet].filter(id => !suggestionIds.has(id));
-      let extraFollowed = [];
-      if (missingIds.length) {
-        try {
-          const { data: ep } = await _supabase
-            .from('posts')
-            .select('user_id,category,author_email')
-            .eq('is_draft', false)
-            .in('user_id', missingIds)
-            .limit(20);
-          const extraSeen = new Set();
-          (ep || []).forEach(p => {
-            if (!extraSeen.has(p.user_id)) { extraSeen.add(p.user_id); extraFollowed.push(p); }
-          });
-          await loadUsernames(extraFollowed.map(e => e.user_id));
-        } catch (e) {}
-      }
-      const allFollowed = [...followedUsers, ...extraFollowed];
-      followingList.innerHTML = '';
-      if (!allFollowed.length) {
-        followingList.innerHTML = `<div style="font-size:.82rem;color:var(--muted);">Following ${followingSet.size} writer${followingSet.size !== 1 ? 's' : ''}.</div>`;
-      } else {
-        allFollowed.forEach(s => {
-          const color = avatarColor(s.user_id || '');
-          const email = s.author_email || 'writer@techbytes.com';
-          const uname = getDisplayName(s.user_id, email);
-          const savedAv = localStorage.getItem('tb_avatar_' + s.user_id);
-          const div = document.createElement('div');
-          div.className = 'follow-item';
-          div.innerHTML = `
-            <div class="follow-avatar" style="background:${color}">
-              ${savedAv ? `<img src="${savedAv}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">` : `<span>${getInitial(email)}</span>`}
-            </div>
-            <div class="follow-info">
-              <div class="follow-name">${uname}</div>
-              <div class="follow-cat">${s.category || 'Blogger'}</div>
-            </div>
-            <button class="btn-follow following" onclick="toggleFollow('${s.user_id}',this)">Following</button>`;
-          followingList.appendChild(div);
-        });
-      }
-    } else {
-      followingCard.style.display = 'none';
-    }
-  } catch (e) {
-    document.getElementById('followList').innerHTML =
-      `<div style="font-size:.82rem;color:var(--muted);">Could not load suggestions.</div>`;
-  }
 
   // Preload usernames for feed posts
   const feedUserIds = allFeedPosts.map(p => p.user_id).filter(Boolean);
@@ -1074,7 +973,6 @@ function continueWithoutAccount() {
   document.getElementById('userPill').style.display = 'none';
   document.getElementById('signoutBtn').style.display = 'none';
   document.getElementById('navTabs').classList.add('show');
-  document.getElementById('postsBadge').classList.remove('show');
   document.getElementById('headerPublishBtn').classList.remove('show');
   switchView('feed');
 }
@@ -1109,7 +1007,6 @@ function showApp(user) {
   document.getElementById('userPill').style.display = 'flex';
   document.getElementById('signoutBtn').style.display = 'inline-block';
   document.getElementById('navTabs').classList.add('show');
-  loadPostsCount();
   switchView('feed');
 }
 
@@ -1118,7 +1015,6 @@ function showLogin() {
   document.getElementById('userPill').style.display = 'none';
   document.getElementById('signoutBtn').style.display = 'none';
   document.getElementById('navTabs').classList.remove('show');
-  document.getElementById('postsBadge').classList.remove('show');
   document.getElementById('headerPublishBtn').classList.remove('show');
 }
 
@@ -1205,8 +1101,8 @@ async function loadPostsCount() {
       .eq('is_draft', false);
 
     if (count !== null) {
-      document.getElementById('postsCount').textContent = count;
-      document.getElementById('postsBadge').classList.toggle('show', count > 0);
+      const el = document.getElementById('statPosts');
+      if (el) el.textContent = count;
     }
   } catch (e) {}
 }
@@ -1669,6 +1565,172 @@ function stopVoice() {
   showToast('⏹️', 'Voice typing stopped.');
 }
 
+// ═══ DISCOVER WRITERS SEARCH ══════════════════════════════════
+function toggleWriterSearch() {
+  const wrap = document.getElementById('writerSearchWrap');
+  const input = document.getElementById('writerSearchInput');
+  if (wrap.style.display === 'none') {
+    wrap.style.display = 'block';
+    input.focus();
+  } else {
+    wrap.style.display = 'none';
+    input.value = '';
+    const fl = document.getElementById('followList');
+    fl.innerHTML = `<div style="font-size:.82rem;color:var(--muted);">Use the search icon to find writers.</div>`;
+  }
+}
+
+let writerSearchTimer = null;
+function searchWriters(query) {
+  clearTimeout(writerSearchTimer);
+  const q = (query || '').trim();
+  const fl = document.getElementById('followList');
+
+  if (!q) {
+    fl.innerHTML = `<div style="font-size:.82rem;color:var(--muted);">Use the search icon to find writers.</div>`;
+    return;
+  }
+  if (q.length < 2) {
+    fl.innerHTML = `<div style="font-size:.82rem;color:var(--muted);">Type at least 2 characters…</div>`;
+    return;
+  }
+
+  fl.innerHTML = `<div style="font-size:.82rem;color:var(--muted);">Searching…</div>`;
+
+  writerSearchTimer = setTimeout(async () => {
+    try {
+      const { data, error } = await _supabase
+        .from('profiles')
+        .select('id, username')
+        .ilike('username', `%${q}%`)
+        .limit(10);
+
+      if (error) throw error;
+
+      // Filter out current user
+      const results = (data || []).filter(p => p.id !== currentUser?.id);
+
+      fl.innerHTML = '';
+      if (!results.length) {
+        fl.innerHTML = `<div style="font-size:.82rem;color:var(--muted);">No writers found for "${q}".</div>`;
+        return;
+      }
+
+      results.forEach(p => {
+        usernameCache[p.id] = p.username;
+        const color = avatarColor(p.id);
+        const isFollowing = followingSet.has(p.id);
+        const savedAv = localStorage.getItem('tb_avatar_' + p.id);
+        const div = document.createElement('div');
+        div.className = 'follow-item';
+        div.innerHTML = `
+          <div class="follow-avatar" style="background:${color}">
+            ${savedAv ? `<img src="${savedAv}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">` : `<span>${getInitial(p.username)}</span>`}
+          </div>
+          <div class="follow-info">
+            <div class="follow-name">${p.username}</div>
+            <div class="follow-cat">Writer</div>
+          </div>
+          <button class="btn-follow ${isFollowing ? 'following' : ''}" onclick="toggleFollow('${p.id}',this)">
+            ${isFollowing ? 'Following' : 'Follow'}
+          </button>`;
+        fl.appendChild(div);
+      });
+    } catch (e) {
+      fl.innerHTML = `<div style="font-size:.82rem;color:var(--muted);">Search failed. Try again.</div>`;
+    }
+  }, 350);
+}
+
+
+// ═══ FOLLOWERS / FOLLOWING MODAL ══════════════════════════════
+async function showFollowersList() {
+  if (!currentUser) return;
+  const modal = document.getElementById('followModal');
+  const body = document.getElementById('followModalBody');
+  document.getElementById('followModalTitle').textContent = 'Followers';
+  body.innerHTML = `<div style="font-size:.85rem;color:var(--muted);text-align:center;padding:2rem;">Loading…</div>`;
+  modal.classList.add('show');
+
+  try {
+    const { data, error } = await _supabase
+      .from('follows')
+      .select('follower_id')
+      .eq('following_id', currentUser.id);
+
+    if (error) throw error;
+    const followerIds = (data || []).map(r => r.follower_id);
+
+    if (!followerIds.length) {
+      body.innerHTML = `<div class="follow-modal-empty"><div class="empty-icon">👥</div>No followers yet.<br>Share your blogs to grow your audience!</div>`;
+      return;
+    }
+
+    await loadUsernames(followerIds);
+    renderFollowModal(body, followerIds);
+  } catch (e) {
+    body.innerHTML = `<div class="follow-modal-empty">Could not load followers.</div>`;
+  }
+}
+
+async function showFollowingList() {
+  if (!currentUser) return;
+  const modal = document.getElementById('followModal');
+  const body = document.getElementById('followModalBody');
+  document.getElementById('followModalTitle').textContent = 'Following';
+  body.innerHTML = `<div style="font-size:.85rem;color:var(--muted);text-align:center;padding:2rem;">Loading…</div>`;
+  modal.classList.add('show');
+
+  try {
+    const { data, error } = await _supabase
+      .from('follows')
+      .select('following_id')
+      .eq('follower_id', currentUser.id);
+
+    if (error) throw error;
+    const followingIds = (data || []).map(r => r.following_id);
+
+    if (!followingIds.length) {
+      body.innerHTML = `<div class="follow-modal-empty"><div class="empty-icon">✨</div>Not following anyone yet.<br>Discover writers using the search!</div>`;
+      return;
+    }
+
+    await loadUsernames(followingIds);
+    renderFollowModal(body, followingIds);
+  } catch (e) {
+    body.innerHTML = `<div class="follow-modal-empty">Could not load following list.</div>`;
+  }
+}
+
+function renderFollowModal(container, userIds) {
+  container.innerHTML = '';
+  userIds.forEach(uid => {
+    const uname = usernameCache[uid] || 'Writer';
+    const color = avatarColor(uid);
+    const savedAv = localStorage.getItem('tb_avatar_' + uid);
+    const isFollowing = followingSet.has(uid);
+    const div = document.createElement('div');
+    div.className = 'follow-item';
+    div.innerHTML = `
+      <div class="follow-avatar" style="background:${color}">
+        ${savedAv ? `<img src="${savedAv}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">` : `<span>${getInitial(uname)}</span>`}
+      </div>
+      <div class="follow-info">
+        <div class="follow-name">${uname}</div>
+        <div class="follow-cat">Writer</div>
+      </div>
+      ${uid !== currentUser?.id ? `
+        <button class="btn-follow ${isFollowing ? 'following' : ''}" onclick="toggleFollow('${uid}',this)">
+          ${isFollowing ? 'Following' : 'Follow'}
+        </button>` : ''}`;
+    container.appendChild(div);
+  });
+}
+
+function closeFollowModal() {
+  document.getElementById('followModal').classList.remove('show');
+}
+
 
 // ═══ INIT APP ═════════════════════════════════════════════════
 export function initApp() {
@@ -1750,6 +1812,8 @@ export function initApp() {
     initVoiceTyping, toggleVoice, startVoice, stopVoice,
     continueWithoutAccount, showGuestToast, showLoginFromToast,
     startEditUsername, saveUsername, cancelEditUsername,
-    loadUsername, loadUsernames
+    loadUsername, loadUsernames,
+    toggleWriterSearch, searchWriters,
+    showFollowersList, showFollowingList, closeFollowModal
   });
 }

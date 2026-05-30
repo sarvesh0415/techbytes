@@ -32,7 +32,7 @@ export const bodyHTML = `
   <div class="header-right">
     <span class="autosave-tag" id="autosaveTag">✓ Draft saved</span>
     <span class="user-pill" id="userPill" style="display:none;"><span class="user-pill-dot"></span><span id="userEmailLabel">user</span></span>
-    <div class="posts-badge" id="postsBadge">✦ <span id="postsCount">0</span> posts</div>
+
     <button class="btn-publish" id="headerPublishBtn" onclick="publishPost()">
       <span id="pubSpinH" style="display:none;width:13px;height:13px;border:2px solid rgba(0,0,0,.3);border-top-color:#000;border-radius:50%;animation:spin .7s linear infinite;"></span>Publish
     </button>
@@ -88,17 +88,21 @@ export const bodyHTML = `
           <div class="profile-stats four-col">
             <div class="stat-box"><div class="stat-num" id="statPosts">0</div><div class="stat-label">Posts</div></div>
             <div class="stat-box"><div class="stat-num" id="statLikes">0</div><div class="stat-label">Likes</div></div>
-            <div class="stat-box"><div class="stat-num" id="statFollowersCount">0</div><div class="stat-label">Followers</div></div>
-            <div class="stat-box"><div class="stat-num" id="statFollowingCount">0</div><div class="stat-label">Following</div></div>
+            <div class="stat-box clickable" onclick="showFollowersList()"><div class="stat-num" id="statFollowersCount">0</div><div class="stat-label">Followers</div></div>
+            <div class="stat-box clickable" onclick="showFollowingList()"><div class="stat-num" id="statFollowingCount">0</div><div class="stat-label">Following</div></div>
           </div>
         </div>
-        <div class="sidebar-card" id="followingCard" style="display:none;">
-          <div class="sidebar-title">People You Follow</div>
-          <div class="follow-list" id="followingUsersList"><div style="font-size:.82rem;color:var(--muted);">Loading…</div></div>
-        </div>
         <div class="sidebar-card">
-          <div class="sidebar-title">Discover Writers</div>
-          <div class="follow-list" id="followList"><div style="font-size:.82rem;color:var(--muted);">Loading suggestions…</div></div>
+          <div class="discover-header">
+            <div class="sidebar-title" style="margin-bottom:0;">Discover Writers</div>
+            <button class="writer-search-icon" onclick="toggleWriterSearch()" title="Search writers">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            </button>
+          </div>
+          <div class="writer-search-wrap" id="writerSearchWrap" style="display:none;">
+            <input type="text" id="writerSearchInput" placeholder="Search by username…" oninput="searchWriters(this.value)" autocomplete="off">
+          </div>
+          <div class="follow-list" id="followList"><div style="font-size:.82rem;color:var(--muted);">Use the search icon to find writers.</div></div>
         </div>
         <div class="sidebar-card">
           <div class="sidebar-title">Trending Tags</div>
@@ -252,6 +256,18 @@ export const bodyHTML = `
     </div>
   </div>
 </main>
+
+<div class="follow-modal-overlay" id="followModal" onclick="if(event.target===this)closeFollowModal()">
+  <div class="follow-modal-card">
+    <div class="follow-modal-header">
+      <div class="follow-modal-title" id="followModalTitle">Followers</div>
+      <button class="follow-modal-close" onclick="closeFollowModal()">✕</button>
+    </div>
+    <div class="follow-modal-body" id="followModalBody">
+      <div style="font-size:.85rem;color:var(--muted);text-align:center;padding:2rem;">Loading…</div>
+    </div>
+  </div>
+</div>
 
 <div class="toast" id="toast"><span class="toast-icon" id="toastIcon">✓</span><span id="toastMsg">Done!</span><button class="toast-signin-btn" id="toastSignInBtn" style="display:none;" onclick="showLoginFromToast()">Sign In</button></div>
 `;
